@@ -1,3 +1,7 @@
+if (typeof fetch === 'undefined') {
+  global.fetch = require('node-fetch');
+}
+
 const fs = require('fs');
 const path = require('path');
 const venom = require('venom-bot');
@@ -14,37 +18,33 @@ if (!fs.existsSync(QR_DIR)) fs.mkdirSync(QR_DIR, { recursive: true });
 venom.create(
   {
     session: 'session-vendas',
-    folderNameToken: 'tokens',      // carpeta onde os tokens serão salvos (/app/tokens por volume)
+    folderNameToken: 'tokens',
     multidevice: true,
-    headless: 'new',
+    // ↓↓↓ TROQUE estas duas linhas
+    headless: false,               // abre janela visível
+    executablePath: undefined,     // deixe o Puppeteer usar o Chromium dele
+    // ↑↑↑
     logQR: true,
     disableSpins: true,
     autoClose: 0,
-    executablePath: process.env.CHROME_PATH || undefined,
     browserArgs: [
       '--no-sandbox',
       '--disable-setuid-sandbox',
       '--disable-dev-shm-usage',
       '--disable-extensions',
       '--disable-gpu',
-      '--headless=new',
       '--window-size=1280,800',
+      '--remote-allow-origins=*',
+      '--disable-features=Translate,AutomationControlled',
     ],
     debug: false,
   },
-  (base64Qrimg, asciiQR, attempts, urlCode) => {
-    // imprime QR ASCII no log (você verá pelo docker logs -f)
-    console.log('QR ASCII:\n', asciiQR);
-
-    // salva svg em volume montado para abrir no host
-    try {
-      const svg = base64Qrimg.replace('data:image/svg+xml;base64,', '');
-      fs.writeFileSync(path.join(QR_DIR, 'qr.svg'), Buffer.from(svg, 'base64'));
-      console.log('QR salvo em', path.join(QR_DIR, 'qr.svg'));
-    } catch (err) {
-      console.error('Erro ao salvar QR:', err);
-    }
-  },
+ (base64Qrimg, asciiQR) => {
+  console.log('QR ASCII:\n', asciiQR);
+  const svg = base64Qrimg.replace('data:image/svg+xml;base64,', '');
+  fs.writeFileSync(path.join(QR_DIR, 'qr.svg'), Buffer.from(svg, 'base64'));
+  console.log('QR salvo em', path.join(QR_DIR, 'qr.svg'));
+},
   (statusSession, sessionName) => {
     console.log('Status da sessão:', statusSession, sessionName);
   }
